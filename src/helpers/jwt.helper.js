@@ -22,6 +22,4 @@ const generarJWT = (id = "") => {
   });
 };
 
-module.exports = {
-  generarJWT,
-};
+module.exports = { generarJWT };

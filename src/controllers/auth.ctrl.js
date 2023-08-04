@@ -6,6 +6,16 @@ const registrarUsuario = async (req, res) => {
   try {
     const { user_name, password } = req.body;
 
+    const user = await User.findOne({ user_name: user_name });
+
+    if (user) {
+      return res.status(400).json({
+        ok: true,
+        msg: `El usuario ${user_name} ya existe`,
+        data: {},
+      });
+    }
+
     const salt = bcrypt.genSaltSync(10);
 
     const nuevo_usuario = {
@@ -20,7 +30,7 @@ const registrarUsuario = async (req, res) => {
     return res.json({
       ok: true,
       msg: "Usuario registrado",
-      data: {},
+      data: { new_user },
       token,
     });
   } catch (error) {
@@ -33,39 +43,69 @@ const registrarUsuario = async (req, res) => {
 };
 
 const login = async (req, res) => {
-  const { user_name, password } = req.body;
+  try {
+    const { user_name, password } = req.body;
 
-  const user = await User.findOne({ user_name: user_name });
+    const user = await User.findOne({ user_name: user_name });
 
-  if (!user) {
-    return res.status(404).json({
+    if (!user) {
+      return res.status(404).json({
+        ok: false,
+        msg: "Usuario incorrecto",
+        data: {},
+      });
+    }
+
+    const validPassword = bcrypt.compareSync(password, user.password);
+
+    if (!validPassword) {
+      return res.status(400).json({
+        ok: false,
+        msg: "contraseña incorrecta",
+        data: {},
+      });
+    }
+
+    const token = await generarJWT(user.id);
+
+    return res.json({
+      ok: true,
+      msg: "Sesion iniciada",
+      data: user,
+      token,
+    });
+  } catch (error) {
+    return res.status(500).json({
       ok: false,
-      msg: "Usuario o contraseña incorrectos",
+      msg: "Error en el servidor",
       data: {},
     });
   }
+};
 
-  const validPassword = bcrypt.compareSync(password, user.password);
+const renovarToken = async (req, res) => {
+  try {
+    const { user } = req;
 
-  if (!validPassword) {
-    return res.status(400).json({
+    const token = await generarJWT(user.id);
+
+    return res.json({
+      ok: true,
+      msg: "Token renovado",
+      data: user,
+      token,
+    });
+  } catch (error) {
+    return res.status(500).json({
       ok: false,
-      msg: "Usuario o contraseña incorrectos",
+      msg: "Error en el servidor",
       data: {},
     });
   }
-
-  const token = await generarJWT(user.id);
-
-  return res.json({
-    ok: true,
-    msg: "Sesion iniciada",
-    data: user,
-    token,
-  });
 };
 
 module.exports = {
   registrarUsuario,
   login,
+  renovarToken,
 };
